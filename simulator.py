@@ -1,17 +1,17 @@
 from gamemechanics import deck_creation, hand_total, dealer_turn, player_turn, is_blackjack
 
 def run_monte_carlo(num_hands, strategy="dealer_mimic"):
-    #This code plays hands of Blackjack using the strategy in gamemechanics.
+    # This code plays hands of Blackjack using the strategy in gamemechanics.
     # It tracks wins, losses to record the win rate over time to graph later.
 
     player_wins = 0
     dealer_wins = 0
     pushes = 0
     
-    # Tracking money for 3:2 blackjack payouts
+    # Tracking money for 3:2 blackjack payouts and split/double multipliers
     units_won = 0.0
 
-    # this array is used later to graph the Law of Large Numbers
+    # This array is used later to graph the Law of Large Numbers
     win_rate_over_time = []
 
     for i in range(1, num_hands + 1):
@@ -32,35 +32,36 @@ def run_monte_carlo(num_hands, strategy="dealer_mimic"):
             dealer_wins += 1
             units_won -= 1.0
         else:
-            #For player's turn
-            player_hand = player_turn(deck, player_hand, strategy=strategy)
-            p_total = hand_total(player_hand)
+            # Player's turn (returns a list of evaluated hands and their bet multipliers)
+            resolved_player_hands = player_turn(deck, player_hand, strategy=strategy)
             
-            # 3. Game Evaluation
-            if p_total > 21:
-                #The Player busts and dealer wins immediately.
-                dealer_wins += 1
-                units_won -= 1.0
-            else:
-                # Dealer has to play only if the player hasn't busted and lost
-                dealer_hand = dealer_turn(deck, dealer_hand)
-                d_total = hand_total(dealer_hand)
+            # Dealer plays once for the round setup
+            dealer_hand = dealer_turn(deck, dealer_hand)
+            d_total = hand_total(dealer_hand)
+            
+            # Evaluate each hand (handles splits turning 1 hand into multiple, or doubles)
+            for p_hand, multiplier in resolved_player_hands:
+                p_total = hand_total(p_hand)
                 
-                if d_total > 21:
+                if p_total > 21:
+                    # Player busts
+                    dealer_wins += 1
+                    units_won -= (1.0 * multiplier)
+                elif d_total > 21:
+                    # Dealer busts, player wins
                     player_wins += 1
-                    units_won += 1.0
+                    units_won += (1.0 * multiplier)
                 elif p_total > d_total:
                     player_wins += 1
-                    units_won += 1.0
+                    units_won += (1.0 * multiplier)
                 elif d_total > p_total:
                     dealer_wins += 1
-                    units_won -= 1.0
+                    units_won -= (1.0 * multiplier)
                 else:
                     pushes += 1
         
-        # 4. Data Tracking: Record the current win rate every 100 hands
+        # Data Tracking: Record the current win rate every 100 hands
         if i % 100 == 0:
-            # We calculate win rate excluding ties (pushes)
             total_resolved = player_wins + dealer_wins
             if total_resolved > 0:
                 current_rate = (player_wins / total_resolved) * 100
@@ -82,7 +83,7 @@ def run_monte_carlo(num_hands, strategy="dealer_mimic"):
 # --- Terminal Test ---
 if __name__ == "__main__":
     test_hands = 10000
-    print(f"Simulating {test_hands} hands with 'dealer_mimic' strategy...")
+    print(f"Simulating {test_hands} hands with strategy...")
     
     results = run_monte_carlo(test_hands, "dealer_mimic")
     
