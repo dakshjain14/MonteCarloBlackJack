@@ -1,75 +1,139 @@
-import streamlit as st
 import matplotlib.pyplot as plt
+import streamlit as st
+
+from gamemechanics import BlackjackRules
 from simulator import run_monte_carlo
 
+
 st.set_page_config(page_title="Blackjack Monte Carlo", layout="wide")
-
 st.title("Blackjack Monte Carlo Simulator")
-st.markdown("We've always been told that the house always wins. You finally have a way to empirically test this! This program runs a simulation of thousands of Blackjack games, and gives you a way to empirically test that claim using applied probability and the Law of Large Numbers!")
+st.write(
+    "Test blackjack strategies with a multi-deck shoe, explicit table rules, "
+    "and separate hand-level and round-level accounting. Results are estimates, "
+    "not exact probabilities."
+)
 
-st.sidebar.header("Simulation Settings")
-num_hands = st.sidebar.slider("Number of Hands", min_value=100, max_value=100000, step=100, value=10000)
+st.sidebar.header("Simulation settings")
+num_rounds = st.sidebar.slider(
+    "Starting rounds", min_value=100, max_value=100_000, step=100, value=10_000
+)
+strategy_label = st.sidebar.selectbox(
+    "Player strategy", ["Basic Strategy", "Aggressive", "Conservative"]
+)
+strategy_map = {
+    "Basic Strategy": "basic_strategy",
+    "Aggressive": "aggressive",
+    "Conservative": "conservative",
+}
+seed = st.sidebar.number_input("Random seed", min_value=0, value=42, step=1)
+st.sidebar.caption("Use the same seed and settings to reproduce a run.")
 
-strategy = st.sidebar.selectbox("Player Strategy", ["Aggressive", "Conservative", "Pure GTO"])
+rules = BlackjackRules()
+st.sidebar.subheader("Table rules")
+st.sidebar.write(
+    "- 6 decks; reshuffle at 75% shoe penetration\n"
+    "- Dealer stands on soft 17\n"
+    "- Blackjack pays 3:2\n"
+    "- Double on any first two cards\n"
+    "- Double after split allowed\n"
+    "- Up to 4 hands per round\n"
+    "- Splits require the same rank\n"
+    "- Split aces receive one card; no re-splitting aces\n"
+    "- Dealer checks for blackjack before player decisions\n"
+    "- No surrender or insurance"
+)
 
-if strategy == "Aggressive":
-    backend_strategy = "dealer_mimic"
-    st.sidebar.info("**Aggressive:** Hits on 16 and below, stands on 17+, splits matching pairs, and doubles down on 9, 10, and 11.")
-elif strategy == "Conservative":
-    backend_strategy = "conservative"
-    st.sidebar.info("**Conservative:** Stands on 15 and above, avoids splitting pairs to limit variance, and only doubles down on 11.")
-elif strategy == "Pure GTO":
-    backend_strategy = "gto"
-    st.sidebar.info("**Pure GTO:** Follows the mathematically perfect Basic Strategy matrix, deciding to hit, stand, split, or double based exactly on the player's total versus the dealer's visible card.")
+if strategy_label == "Basic Strategy":
+    st.sidebar.info(
+        "Rule-matched basic strategy for this table. It is not a GTO solver."
+    )
+elif strategy_label == "Aggressive":
+    st.sidebar.info(
+        "Experimental heuristic: splits every eligible pair, doubles hard totals "
+        "9–11, and otherwise hits below 17."
+    )
+else:
+    st.sidebar.info(
+        "Experimental heuristic: never splits, doubles 11, and stands on 15+."
+    )
 
-if st.sidebar.button("Run Simulation"):
-    with st.spinner(f"Simulating {num_hands} hands..."):
-        
-        results = run_monte_carlo(num_hands, backend_strategy) 
-        
-        # Calculate House Edge percentage: (- net units / total hands) * 100
-        house_edge = (-results['units_won'] / num_hands) * 100
-        
-        st.subheader("Final Statistics")
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
-        col1.metric("Player Win Rate", f"{results['final_win_rate']:.2f}%")
-        col2.metric("Player Wins", results['player_wins'])
-        col3.metric("Dealer Wins", results['dealer_wins'])
-        col4.metric("Pushes (Ties)", results['pushes'])
-        col5.metric("Net Units", results['units_won'])
-        col6.metric("House Edge", f"{house_edge:.2f}%")
-        
-        # Natural, human-written strategy analysis
-        st.subheader("Strategy Analysis")
-        if backend_strategy == "dealer_mimic":
-            st.info("""
-            **Aggressive Strategy Breakdown:**
-            * **The Splitting & Doubling Trap:** Splitting every pair and doubling down on marginal hands (like a 9 against a strong dealer card) sounds proactive, but it actually hurts you. Breaking up good hands or doubling on bad odds multiplies your bets right where the house has the advantage, causing your bankroll to bleed out much faster.
-            """)
-        elif backend_strategy == "conservative":
-            st.info("""
-            **Conservative Strategy Breakdown:**
-            * **Why the House Edge Dropped to 3.3%:** By dodging the high-risk trap of splitting pairs and only doubling down when you draw a rock-solid 11, you cut out reckless bets. Standing early on 15 plus smart, selective doubling keeps your variance low and protects your bankroll from massive swings.
-            """)
-        elif backend_strategy == "gto":
-            st.info("""
-            **Pure GTO Strategy Breakdown:**
-            * **Mathematical Perfection:** By flawlessly cross-referencing your total against the dealer's upcard, this strategy maximizes Expected Value (EV). It exploits dealer weakness (2-6) by doubling aggressive soft hands and standing early, while mitigating losses against strong dealer cards (7-Ace) by hitting appropriately. This drives the house edge down to its theoretical minimum (around 0.5%).
-            """)
-        
-        st.subheader("The Law of Large Numbers")
-        st.markdown("While the win rate fluctuates wildly at the start, it converges to a constant as the sample size increases!")
-        
-        fig, ax = plt.subplots(figsize=(10, 5))
-        
-        # X-axis shows 100-hand interval
-        x_values = [i * 100 for i in range(1, len(results['win_rates']) + 1)]
-        
-        ax.plot(x_values, results['win_rates'], label="Current Win Rate", color="#9065df", linewidth=1.5)
-        ax.axhline(y=results['final_win_rate'], color='red', linestyle = '--', label=f"Convergence ({results['final_win_rate']:.2f}%)")
-        ax.set_xlabel("Number of Hands")
-        ax.set_ylabel("Win Rate in %")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        st.pyplot(fig)
+if st.button("Run simulation", type="primary"):
+    with st.spinner(f"Simulating {num_rounds:,} starting rounds..."):
+        results = run_monte_carlo(
+            num_rounds=num_rounds,
+            strategy=strategy_map[strategy_label],
+            seed=int(seed),
+            rules=rules,
+        )
+
+    st.subheader("Results")
+    first_row = st.columns(4)
+    first_row[0].metric("Starting rounds", f"{results['rounds']:,}")
+    first_row[1].metric("Hand win rate", f"{results['hand_win_rate']:.2f}%")
+    first_row[2].metric("Net units won", f"{results['net_units_won']:+,.2f}")
+    first_row[3].metric("Total wagered", f"{results['total_wagered']:,.2f}")
+
+    second_row = st.columns(4)
+    second_row[0].metric("Hand wins", f"{results['hand_wins']:,}")
+    second_row[1].metric("Hand losses", f"{results['hand_losses']:,}")
+    second_row[2].metric("Hand pushes", f"{results['hand_pushes']:,}")
+    second_row[3].metric("Positive-net rounds", f"{results['round_positive']:,}")
+
+    third_row = st.columns(4)
+    third_row[0].metric("Negative-net rounds", f"{results['round_negative']:,}")
+    third_row[1].metric("Zero-net rounds", f"{results['round_zero']:,}")
+    third_row[2].metric(
+        "House edge / initial bet", f"{results['house_edge_pct']:+.3f}%"
+    )
+    third_row[3].metric(
+        "House return / total action", f"{results['return_on_total_action_pct']:+.3f}%"
+    )
+
+    if results["shoe_count"] >= 30:
+        low, high = results["house_edge_ci_95_pct"]
+        st.caption(
+            f"Approximate 95% interval for house edge per initial bet: "
+            f"{low:+.3f}% to {high:+.3f}%. Calculated across "
+            f"{results['shoe_count']:,} shuffled shoes; this is not a guarantee."
+        )
+    else:
+        st.caption(
+            f"Only {results['shoe_count']} shuffled shoes were used. "
+            "Run more rounds for a useful uncertainty interval."
+        )
+    st.caption(
+        "Hand stats count each split hand separately. Round stats combine all hands "
+        "from the original deal: a winning split hand plus a losing split hand can "
+        "be a zero-net round, but neither hand is counted as a push."
+    )
+
+    st.subheader("Return as the simulation grows")
+    st.write(
+        "The line shows cumulative player profit as a percentage of starting bets. "
+        "It is more informative than win rate because it includes pushes, 3:2 "
+        "blackjacks, splits, and doubles."
+    )
+    points = results["cumulative_player_return"]
+    x_values = [point[0] for point in points]
+    y_values = [point[1] for point in points]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(x_values, y_values, linewidth=1.5, label="Cumulative player return")
+    ax.axhline(y=0, linestyle="--", linewidth=1, label="Break-even")
+    ax.set_xlabel("Starting rounds")
+    ax.set_ylabel("Player return per initial bet (%)")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    st.pyplot(fig)
+    plt.close(fig)
+
+    st.subheader("How to read the results")
+    st.write(
+        f"- **House edge:** {results['house_edge_pct']:+.3f}% is the estimated "
+        "house advantage per original one-unit bet. A negative result means the "
+        "player finished ahead in this sample.\n"
+        f"- **Total action:** {results['total_wagered']:,.2f} units includes the "
+        "extra stakes added by splits and doubles.\n"
+        "- **Zero-net rounds:** these are not necessarily pushes. They can include "
+        "a mix of wins and losses across split hands."
+    )
