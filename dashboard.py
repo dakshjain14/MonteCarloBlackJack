@@ -10,7 +10,7 @@ st.markdown("We've always been told that the house always wins. You finally have
 st.sidebar.header("Simulation Settings")
 num_hands = st.sidebar.slider("Number of Hands", min_value=100, max_value=100000, step=100, value=10000)
 
-strategy = st.sidebar.selectbox("Player Strategy", ["Aggressive", "Conservative"])
+strategy = st.sidebar.selectbox("Player Strategy", ["Aggressive", "Conservative", "Pure GTO"])
 
 if strategy == "Aggressive":
     backend_strategy = "dealer_mimic"
@@ -18,6 +18,9 @@ if strategy == "Aggressive":
 elif strategy == "Conservative":
     backend_strategy = "conservative"
     st.sidebar.info("**Conservative:** Stands on 15 and above, avoids splitting pairs to limit variance, and only doubles down on 11.")
+elif strategy == "Pure GTO":
+    backend_strategy = "gto"
+    st.sidebar.info("**Pure GTO:** Follows the mathematically perfect Basic Strategy matrix, deciding to hit, stand, split, or double based exactly on the player's total versus the dealer's visible card.")
 
 if st.sidebar.button("Run Simulation"):
     with st.spinner(f"Simulating {num_hands} hands..."):
@@ -47,6 +50,11 @@ if st.sidebar.button("Run Simulation"):
             st.info("""
             **Conservative Strategy Breakdown:**
             * **Why the House Edge Dropped to 3.3%:** By dodging the high-risk trap of splitting pairs and only doubling down when you draw a rock-solid 11, you cut out reckless bets. Standing early on 15 plus smart, selective doubling keeps your variance low and protects your bankroll from massive swings.
+            """)
+        elif backend_strategy == "gto":
+            st.info("""
+            **Pure GTO Strategy Breakdown:**
+            * **Mathematical Perfection:** By flawlessly cross-referencing your total against the dealer's upcard, this strategy maximizes Expected Value (EV). It exploits dealer weakness (2-6) by doubling aggressive soft hands and standing early, while mitigating losses against strong dealer cards (7-Ace) by hitting appropriately. This drives the house edge down to its theoretical minimum (around 0.5%).
             """)
         
         st.subheader("The Law of Large Numbers")

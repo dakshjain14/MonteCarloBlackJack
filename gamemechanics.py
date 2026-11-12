@@ -1,38 +1,35 @@
 import random
+from gto_strategy import execute_pure_gto_turn # Add this import
 
 def deck_creation():
     cards = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11] 
-    # Every ace is 11 by default, only 1 in the case of bust
     deck = cards * 4
     random.shuffle(deck)
     return deck
 
 def hand_total(hand):
     total = sum(hand)
-    aces = hand.count(11) # Gives us number of aces
+    aces = hand.count(11)
     while total > 21 and aces > 0:
         total -= 10
         aces -= 1
-    # Efficiently handles the case of aces being 1 instead of 11
     return total
 
 def is_blackjack(hand):
-    # This is to check if a hand is Blackjack (3:2 payout)
     return len(hand) == 2 and hand_total(hand) == 21
 
 def dealer_turn(deck, dealer_hand):
-    # Dealer hits on 16 and lower, stands on 17 and above
     while hand_total(dealer_hand) < 17:
-        dealer_hand.append(deck.pop()) # Deck.pop removes the top card
+        dealer_hand.append(deck.pop())
     return dealer_hand
 
-def player_turn(deck, player_hand, strategy="dealer_mimic"):
-    """
-    Evaluates the player's turn, supporting Splitting and Doubling Down.
-    Returns a list of tuples: [(hand_cards, bet_multiplier), ...]
-    """
+# Add dealer_upcard=None to the parameters
+def player_turn(deck, player_hand, strategy="dealer_mimic", dealer_upcard=None):
+    # Add the GTO routing first
+    if strategy == "gto":
+        return execute_pure_gto_turn(deck, player_hand, dealer_upcard)
+        
     if strategy == "dealer_mimic": 
-        # Check for pair splitting on initial 2 cards
         if len(player_hand) == 2 and player_hand[0] == player_hand[1]:
             hand1 = [player_hand[0], deck.pop()]
             hand2 = [player_hand[1], deck.pop()]
@@ -44,7 +41,6 @@ def player_turn(deck, player_hand, strategy="dealer_mimic"):
         multiplier = 1
         total = hand_total(player_hand)
         
-        # Dealer mimic doubling rule: aggressive double on 9, 10, or 11 with 2 cards
         if len(player_hand) == 2 and total in [9, 10, 11]:
             multiplier = 2
             player_hand.append(deck.pop())
@@ -55,11 +51,9 @@ def player_turn(deck, player_hand, strategy="dealer_mimic"):
         return [(player_hand, multiplier)]
         
     elif strategy == "conservative": 
-        # Conservative player avoids the high risk/variance of splitting pairs
         multiplier = 1
         total = hand_total(player_hand)
         
-        # Conservative only doubles on a safe, high-value total of 11
         if len(player_hand) == 2 and total == 11:
             multiplier = 2
             player_hand.append(deck.pop())
