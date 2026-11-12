@@ -15,6 +15,10 @@ def hand_total(hand):
     #Efficiently handles the case of aces being 1 instead of 11
     return total
 
+def is_blackjack(hand):
+    # This is to check if a hand is Blackjack (3:2 payout)
+    return len(hand) == 2 and hand_total(hand) == 21
+
 def dealer_turn(deck, dealer_hand):
     #Dealer hits on 16 and lower, stands on 17 and above
     while hand_total(dealer_hand) < 17:
@@ -33,11 +37,3 @@ def player_turn(deck, player_hand, strategy="dealer_mimic"):
             player_hand.append(deck.pop())
             
     return player_hand
-
-# --- Terminal Test ---
-if __name__ == "__main__":
-    test_deck = deck_creation()
-    d_hand = [test_deck.pop(), test_deck.pop()] #pops two cards from the deck and places them into the dealer's hand
-    print(f"Dealer starting hand: {d_hand} (Total: {hand_total(d_hand)})")
-    d_final = dealer_turn(test_deck, d_hand)
-    print(f"Dealer final hand: {d_final} (Final Total: {hand_total(d_final)})\n")
