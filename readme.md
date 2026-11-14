@@ -15,7 +15,7 @@ Matplotlib
 
 ## Try it
 
-Run locally at http://localhost:8501 (or replace this line with your Streamlit Community Cloud URL once deployed).
+https://montecarloblackjack.streamlit.app/
 
 ## Running locally
 ```bash
