@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blackjack Monte Carlo Simulator</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <h2>Simulation settings</h2>
+
+      <label for="rounds">Starting rounds: <span id="rounds-value">10,000</span></label>
+      <input type="range" id="rounds" min="100" max="100000" step="100" value="10000">
+
+      <label for="strategy">Player strategy</label>
+      <select id="strategy">
+        <option value="basic_strategy">Basic Strategy</option>
+        <option value="aggressive">Aggressive</option>
+        <option value="conservative">Conservative</option>
+      </select>
+      <p id="strategy-note" class="note"></p>
+
+      <label for="seed">Random seed</label>
+      <input type="number" id="seed" min="0" step="1" value="42">
+      <p class="hint">Use the same seed and settings to reproduce a run.</p>
+
+      <h3>Table rules</h3>
+      <ul class="rules">
+        <li>6 decks; reshuffle at 75% shoe penetration</li>
+        <li>Dealer stands on soft 17</li>
+        <li>Blackjack pays 3:2</li>
+        <li>Double on any first two cards</li>
+        <li>Double after split allowed</li>
+        <li>Up to 4 hands per round</li>
+        <li>Splits require the same rank</li>
+        <li>Split aces receive one card; no re-splitting aces</li>
+        <li>Dealer checks for blackjack before player decisions</li>
+        <li>No surrender or insurance</li>
+      </ul>
+    </aside>
+
+    <main>
+      <h1>Blackjack Monte Carlo Simulator</h1>
+      <p>Test blackjack strategies with a multi-deck shoe, explicit table rules, and separate
+        hand-level and round-level accounting. Results are estimates, not exact probabilities.</p>
+
+      <button id="run" disabled>Run simulation</button>
+      <p id="status" role="status">Loading Python engine (first load takes a few seconds)...</p>
+
+      <section id="results" hidden>
+        <h2>Results</h2>
+        <div id="metrics" class="metrics"></div>
+        <p id="ci" class="caption"></p>
+        <p class="caption">Hand stats count each split hand separately. Round stats combine all
+          hands from the original deal: a winning split hand plus a losing split hand can be a
+          zero-net round, but neither hand is counted as a push.</p>
+
+        <h2>Return as the simulation grows</h2>
+        <p>The line shows cumulative player profit as a percentage of starting bets. It is more
+          informative than win rate because it includes pushes, 3:2 blackjacks, splits, and doubles.</p>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+
+        <h2>How to read the results</h2>
+        <ul>
+          <li><strong>House edge:</strong> <span id="edge-text"></span> is the estimated house
+            advantage per original one-unit bet. A negative result means the player finished
+            ahead in this sample.</li>
+          <li><strong>Total action:</strong> <span id="action-text"></span> units includes the
+            extra stakes added by splits and doubles.</li>
+          <li><strong>Zero-net rounds:</strong> these are not necessarily pushes. They can include
+            a mix of wins and losses across split hands.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

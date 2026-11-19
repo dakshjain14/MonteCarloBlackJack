@@ -1,2 +1,4 @@
 streamlit>=1.35
 matplotlib>=3.8
+# No third-party packages required.
+# The website runs the Python engine in the browser via Pyodide (see worker.js).
